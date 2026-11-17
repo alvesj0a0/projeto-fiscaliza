@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiscaliza Pará • Operação Estadual SEDUC-PA</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="layout">
+        <!-- Barra Lateral Escura -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-box">✓</div>
+                <div>
+                    <h2>Fiscaliza Pará</h2>
+                    <span>SEDUC • PA</span>
+                </div>
+            </div>
+
+            <div class="sidebar-dre">
+                <label>UNIDADE REGIONAL</label>
+                <select id="sidebar-dre-select">
+                    <option value="TODAS">Todas as DREs (Pará)</option>
+                    <option value="08ª DRE - Breves (Marajó)" selected>DRE Marajó</option>
+                    <option value="01ª DRE - Belém">01ª DRE - Belém</option>
+                    <option value="04ª DRE - Marabá">04ª DRE - Marabá</option>
+                    <option value="05ª DRE - Santarém">05ª DRE - Santarém</option>
+                </select>
+            </div>
+
+            <nav class="menu">
+                <button class="menu-item active" data-view="dashboard">
+                    <span>⊞ Visão geral</span>
+                </button>
+                <button class="menu-item" data-view="mapa">
+                    <span>⌖ Mapa territorial</span>
+                </button>
+                <button class="menu-item" data-view="vistorias">
+                    <span>☑ Vistorias & Auditoria</span>
+                </button>
+                <button class="menu-item" data-view="inconformidades">
+                    <span>⚠ Inconformidades</span>
+                    <span class="nav-badge badge-red" id="badge-inconf"></span>
+                </button>
+                <button class="menu-item" data-view="escolas">
+                    <span>🏛 Escolas</span>
+                </button>
+                <button class="menu-item" data-view="usuarios">
+                    <span>👤 Fiscais Autorizados</span>
+                    <span class="nav-badge badge-blue"></span>
+                </button>
+            </nav>
+
+            <div class="sidebar-support">
+                <strong>Central de suporte</strong>
+                <span>Dúvidas na operação?</span>
+            </div>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-wrapper">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div>
+                    <h1 id="page-title">Visão geral</h1>
+                    <span class="topbar-sub">Monitoramento estadual do PEAE e PETE em tempo real</span>
+                </div>
+
+                <div class="topbar-actions">
+                    <input type="text" id="busca-global" class="search-input"
+                        placeholder="🔍 Buscar escola, protocolo...">
+                    <div class="user-profile">
+                        <div class="avatar">SE</div>
+                        <div>
+                            <strong>Sede SEDUC-PA</strong>
+                            <span>Gestão Central</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- VIEW 1: VISÃO GERAL (DASHBOARD COMPLETO) -->
+                <section id="view-dashboard" class="view active">
+                    <div class="section-header">
+                        <div>
+                            <h2>Operação estadual</h2>
+                            <p>Acompanhe as vistorias de merenda e transporte escolar em todo o Pará.</p>
+                        </div>
+                        <div class="header-buttons">
+                            <button class="btn-outline" onclick="window.print()">📄 Exportar PDF</button>
+                            <button class="btn-primary" onclick="carregarDados()">↻ Atualizar dados</button>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Status de Rede -->
+                    <div class="alert-banner">
+                        <span>📶 Conexão intermitente em áreas ribeirinhas. Os registros offline permanecem íntegros via
+                            SHA-256 e são consolidados após sincronização.</span>
+                        <button class="btn-small" onclick="carregarDados()">Verificar</button>
+                    </div>
+
+                    <!-- Barra de Filtros -->
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>DRE</label>
+                            <select id="filtro-dre">
+                                <option value="TODAS">Todas</option>
+                                <option value="08ª DRE - Breves (Marajó)">DRE Marajó</option>
+                                <option value="01ª DRE - Belém">01ª DRE - Belém</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>PROGRAMA</label>
+                            <select id="filtro-programa">
+                                <option value="TODOS">PEAE + PETE</option>
+                                <option value="PEAE">PEAE (Merenda)</option>
+                                <option value="PETE">PETE (Transporte)</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>STATUS</label>
+                            <select id="filtro-status">
+                                <option value="TODOS">Todos</option>
+                                <option value="Conforme">Conforme</option>
+                                <option value="Critica">Crítica</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary filter-btn" onclick="carregarDados()">⚙ Aplicar</button>
+                    </div>
+
+                    <!-- 4 Cards KPI -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span>Escolas fiscalizadas</span>
+                                <span class="kpi-icon bg-green-light">🏛</span>
+                            </div>
+                            <div class="kpi-bottom">
+                                <strong id="kpi-escolas">0</strong>
+                                <span class="kpi-delta text-green">100% ativas</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span>Vistorias registradas</span>
+                                <span class="kpi-icon bg-orange-light">📋</span>
+                            </div>
+                            <div class="kpi-bottom">
+                                <strong id="kpi-total">0</strong>
+                                <span class="kpi-delta text-orange">Base auditada</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span>Inconformidades críticas</span>
+                                <span class="kpi-icon bg-red-light">⚠</span>
+                            </div>
+                            <div class="kpi-bottom">
+                                <strong id="kpi-criticas">0</strong>
+                                <span class="kpi-delta text-red">Ação imediata</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span>Índice de conformidade</span>
+                                <span class="kpi-icon bg-blue-light">🛡</span>
+                            </div>
+                            <div class="kpi-bottom">
+                                <strong id="kpi-taxa">0%</strong>
+                                <span class="kpi-delta text-blue">Integridade SHA-256</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grid Meio: Mapa Territorial + Alertas Prioritários -->
+                    <div class="middle-grid">
+                        <div class="card map-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Cobertura territorial • Estado do Pará</h3>
+                                    <span class="sub">Distribuição geográfica das vistorias por polo regional</span>
+                                </div>
+                                <div class="legend">
+                                    <span class="pill-green">● Regular</span>
+                                    <span class="pill-red">● Crítico</span>
+                                </div>
+                            </div>
+
+                            <!-- Mapa Estilizado do Pará com Pins Interativos -->
+                            <div class="para-map-container">
+                                <div id="mapa-para" style="width: 100%; height: 100%; z-index: 1;"></div>
+                                <div class="map-caption" id="map-status-caption">Mapa Territorial do Pará • Carregando
+                                    coordenadas...</div>
+                            </div>
+                        </div>
+
+                        <div class="card alerts-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Alertas prioritários</h3>
+                                    <span class="sub">Ocorrências que exigem ação imediata</span>
+                                </div>
+                                <span class="pill-red">Urgente</span>
+                            </div>
+
+                            <div class="alert-list" id="lista-alertas-prioritarios">
+                                <!-- Preenchido dinamicamente pelo app.js -->
+                            </div>
+
+                            <button class="btn-soft-green full-width" onclick="mudarAba('vistorias')">
+                                Abrir todas as vistorias auditadas →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Grid Gráficos: Evolução das Vistorias + Distribuição por Status -->
+                    <div class="charts-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Evolução das vistorias</h3>
+                                    <span class="sub">Registros consolidados nos últimos 8 meses</span>
+                                </div>
+                                <span class="pill-green">↗ +14,2%</span>
+                            </div>
+                            <div class="bar-chart" id="grafico-evolucao"></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Distribuição por status</h3>
+                                    <span class="sub">Percentual atual sobre a base auditada</span>
+                                </div>
+                                <span class="pill-blue">Base oficial</span>
+                            </div>
+                            <div class="progress-list" id="grafico-status">
+                                <!-- Preenchido dinamicamente pelo app.js -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela Vistorias Recentes -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3>Vistorias recentes</h3>
+                                <span class="sub">Registros recebidos diretamente do aplicativo móvel</span>
+                            </div>
+                            <button class="btn-outline" onclick="mudarAba('vistorias')">☰ Ver todas</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>CÓDIGO</th>
+                                    <th>ESCOLA</th>
+                                    <th>PROGRAMA</th>
+                                    <th>DATA UTC</th>
+                                    <th>STATUS</th>
+                                    <th>INTEGRIDADE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-recentes"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- VIEW 2: VISTORIAS E AUDITORIA -->
+                <section id="view-vistorias" class="view">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Auditoria Completa de Registros (SHA-256)</h3>
+                            <button class="btn-primary" onclick="carregarDados()">↻ Sincronizar</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Protocolo</th>
+                                    <th>Unidade Escolar</th>
+                                    <th>Programa</th>
+                                    <th>Coordenadas GPS</th>
+                                    <th>Status</th>
+                                    <th>Hash SHA-256</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-vistorias-completa"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: INCONFORMIDADES -->
+                <section id="view-inconformidades" class="view">
+                    <div class="card">
+                        <h3>Inconformidades Críticas Pendentes de Providência</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Protocolo</th>
+                                    <th>Escola</th>
+                                    <th>Programa</th>
+                                    <th>Data Registro</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-inconformidades"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: ESCOLAS -->
+                <section id="view-escolas" class="view">
+                    <div class="card">
+                        <h3>Cadastrar Unidade Escolar</h3>
+                        <form id="form-escola" class="form-grid">
+                            <input type="text" id="esc-inep" placeholder="Código INEP (8 dígitos)" required>
+                            <input type="text" id="esc-nome" placeholder="Nome da Escola (Ex: EEEF...)" required>
+                            <input type="text" id="esc-municipio" placeholder="Município / Comunidade" required>
+                            <select id="esc-rota" required>
+                                <option value="Terrestre">Rota Terrestre</option>
+                                <option value="Rota fluvial">Rota Fluvial</option>
+                            </select>
+                            <input type="text" id="esc-diretor" placeholder="Diretor(a) Responsável" required>
+                            <input type="number" id="esc-alunos" placeholder="Qtd. Estudantes" required>
+                            <button type="submit" class="btn-primary">Salvar Escola</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>Unidades Escolares Monitoradas</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>INEP</th>
+                                    <th>Escola</th>
+                                    <th>Localização</th>
+                                    <th>Modalidade</th>
+                                    <th>Diretor(a)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-escolas"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- VIEW 5: USUÁRIOS AUTORIZADOS -->
+                <section id="view-usuarios" class="view">
+                    <div class="card">
+                        <h3>Autorizar Fiscal (Diretores Escolares e Gestores Sede SEDUC-PA)</h3>
+                        <form id="form-usuario" class="form-grid">
+                            <input type="text" id="usr-nome" placeholder="Nome Completo" required>
+                            <input type="text" id="usr-cpf" placeholder="CPF (somente números)" required>
+                            <input type="email" id="usr-email" placeholder="E-mail institucional" required>
+                            <select id="usr-perfil" required>
+                                <option value="Diretor escolar">Diretor Escolar</option>
+                                <option value="Gestor Sede SEDUC-PA">Gestor Sede SEDUC-PA</option>
+                            </select>
+                            <button type="submit" class="btn-primary">Autorizar Acesso</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>Equipe Autorizada</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>E-mail</th>
+                                    <th>Perfil</th>
+                                    <th>Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-usuarios"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Inspeção -->
+    <div id="modal-auditoria" class="modal hidden">
+        <div class="modal-content">
+            <h3>Certificado de Integridade Digital</h3>
+            <div id="modal-body"></div>
+            <button class="btn-primary" onclick="fecharModal()">Fechar</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
